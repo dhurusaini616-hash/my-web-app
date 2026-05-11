@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DEVIL 3.0 • ACCESS GATE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root { --d-red: #ff0000; --d-glow: rgba(255, 0, 0, 0.4); --d-blue: #0077ff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier Prime', monospace; user-select: none; }
+        
+        body { 
+            background: #000; color: var(--d-red); 
+            display: flex; justify-content: center; align-items: center; 
+            min-height: 100vh; overflow-x: hidden;
+            background-image: radial-gradient(circle at center, #100 0%, #000 80%);
+        }
+
+        /* LOGIN OVERLAY */
+        #login-gate {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100; display: flex;
+            flex-direction: column; align-items: center; justify-content: center;
+            transition: 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .login-box {
+            width: 90%; max-width: 350px; padding: 40px 20px;
+            border: 1px solid #400; background: rgba(10, 0, 0, 0.9);
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        input {
+            width: 100%; background: #000; border: 1px solid #500;
+            padding: 15px; color: var(--d-red); margin: 20px 0;
+            text-align: center; font-size: 18px; outline: none;
+            box-shadow: inset 0 0 10px rgba(255,0,0,0.1);
+        }
+
+        button {
+            width: 100%; padding: 15px; background: #500; color: #fff;
+            border: none; cursor: pointer; font-weight: bold;
+            letter-spacing: 3px; transition: 0.3s;
+        }
+        button:hover { background: var(--d-red); box-shadow: 0 0 20px var(--d-red); }
+
+        /* DASHBOARD (Hidden by default) */
+        #main-ui { opacity: 0; display: none; width: 100%; max-width: 450px; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
+
+        /* SHARED GLOW UI COMPONENTS */
+        .glow-aura { position: relative; background: rgba(0, 0, 0, 0.95); box-shadow: 0 0 30px rgba(255, 0, 0, 0.15); }
+        .bracket-box { position: relative; border: 1px solid #400; width: 100%; }
+        .prediction-hero { padding: 40px; text-align: center; box-shadow: 0 0 40px rgba(255, 0, 0, 0.2); }
+        .big-res { font-size: 55px; font-weight: 700; letter-spacing: 5px; margin: 10px 0; }
+        .counter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; }
+        .counter-item { border: 1px solid #300; padding: 12px 5px; text-align: center; background: #000; box-shadow: 0 0 15px rgba(255, 0, 0, 0.1); }
+        .num-card { width: 65px; height: 65px; border: 1px solid #500; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 20px var(--d-glow); }
+        .c-label { font-size: 8px; color: #700; letter-spacing: 2px; margin-bottom: 5px; }
+        .c-val { font-size: 16px; font-weight: 700; }
+        .history-box { width: 100%; border: 1px solid #300; background: rgba(0,0,0,0.8); }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
+        th { color: #600; padding: 12px; border-bottom: 1px solid #200; }
+        td { padding: 12px; border-bottom: 1px solid #111; color: #900; }
+        .win { color: #0f0 !important; } .loss { color: #f00 !important; } .jackpot { color: gold !important; }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN GATE -->
+<div id="login-gate">
+    <div style="font-size:10px; letter-spacing:5px; color:#400; margin-bottom:10px;">⛤ RESTRICTED AREA ⛤</div>
+    <div class="login-box">
+        <div style="font-size:24px; font-weight:bold; letter-spacing:8px;">DEVIL LOGIN</div>
+        <input type="password" id="access-key" placeholder="ENTER ACCESS KEY">
+        <button onclick="checkAccess()">UNLOCK INFERNUM</button>
+        <div id="login-msg" style="font-size:9px; margin-top:15px; color:#300;">V3.0 SECURE ENCRYPTION</div>
+    </div>
+</div>
+
+<!-- MAIN DASHBOARD -->
+<div id="main-ui">
+    <div style="font-size:10px; letter-spacing:5px; color:#400;">⛤ INFERNUM ⛤</div>
+    <div style="font-size:35px; font-weight:bold; letter-spacing:12px; text-shadow:0 0 20px var(--d-red);">DEVIL</div>
+
+    <div class="bracket-box glow-aura" style="display:flex; justify-content:space-between; padding:18px 28px;">
+        <div><div class="c-label">PERIOD</div><div id="nextP" class="c-val">----</div></div>
+        <div style="text-align:right;"><div class="c-label">NEXT IN</div><div id="timer" class="c-val" style="color:gold;">00:00</div></div>
+    </div>
+
+    <div class="bracket-box prediction-hero glow-aura" id="hero-aura">
+        <div class="c-label">CURRENT PREDICTION</div>
+        <div id="res" class="big-res">WAITING</div>
+    </div>
+
+    <div style="display:flex; gap:20px;">
+        <div class="num-card glow-aura"><div class="c-label">NUM 1</div><div id="n1" class="c-val">?</div></div>
+        <div class="num-card glow-aura" style="border-color:var(--d-red);"><div class="c-label">NUM 2</div><div id="n2" class="c-val">?</div></div>
+    </div>
+
+    <div class="counter-grid">
+        <div class="counter-item glow-aura"><div class="c-label">WIN</div><div id="c-win" class="c-val win">0</div></div>
+        <div class="counter-item glow-aura"><div class="c-label">LOSS</div><div id="c-loss" class="c-val loss">0</div></div>
+        <div class="counter-item glow-aura"><div class="c-label">JACK</div><div id="c-jack" class="c-val jackpot">0</div></div>
+        <div class="counter-item glow-aura"><div class="c-label">RATE</div><div id="c-rate" class="c-val" style="color:gold;">0%</div></div>
+    </div>
+
+    <div class="history-box glow-aura">
+        <table>
+            <thead><tr><th>PERIOD</th><th>NUM</th><th>SIZE</th><th>RESULT</th></tr></thead>
+            <tbody id="session-h"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // ACCESS CONTROL
+    function checkAccess() {
+        const key = document.getElementById('access-key').value;
+        const msg = document.getElementById('login-msg');
+        
+        // You can change "DEVIL777" to any key you want
+        if(key === "DEVIL777") {
+            const gate = document.getElementById('login-gate');
+            const ui = document.getElementById('main-ui');
+            
+            gate.style.transform = "translateY(-100%)";
+            setTimeout(() => {
+                gate.style.display = "none";
+                ui.style.display = "flex";
+                setTimeout(() => ui.style.opacity = "1", 50);
+                startEngine(); // Start fetching data only after login
+            }, 800);
+        } else {
+            msg.innerText = "INVALID ACCESS KEY - PERMISSION DENIED";
+            msg.style.color = "red";
+            document.getElementById('access-key').value = "";
+        }
+    }
+
+    // DASHBOARD ENGINE
+    const fbConfig = { apiKey: "AIzaSyDj8leldCxpZ9RupIZSOAgPMqWtN4U6ruU", authDomain: "ytexpert-2ad5e.firebaseapp.com", projectId: "ytexpert-2ad5e" };
+    firebase.initializeApp(fbConfig); 
+    
+    let stats = { win: 0, loss: 0, jack: 0 };
+    let sessionData = [];
+    let lastProcessed = "";
+    let currentActive = null;
+
+    function startEngine() {
+        setInterval(() => {
+            const s = new Date().getSeconds();
+            document.getElementById('timer').innerText = "00:" + (60 - s).toString().padStart(2, '0');
+        }, 1000);
+        setInterval(fetchData, 2000);
+    }
+
+    async function fetchData() {
+        try {
+            const r = await fetch(`https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?t=${Date.now()}`);
+            const res = await r.json();
+            if (!res.data || !res.data.list) return;
+            
+            const list = res.data.list;
+            const latest = list[0];
+            const issue = latest.issueNumber;
+
+            if (lastProcessed !== "" && lastProcessed !== issue) {
+                if (currentActive && currentActive.period === issue) {
+                    const n = parseInt(latest.number);
+                    const sz = n >= 5 ? "BIG" : "SMALL";
+                    let st = (n === currentActive.n1 || n === currentActive.n2) ? "JACKPOT" : (sz === currentActive.size ? "WIN" : "LOSS");
+                    if(st === "JACKPOT") stats.jack++; else if(st === "WIN") stats.win++; else stats.loss++;
+                    sessionData.unshift({ p: issue.slice(-4), num: n, s: sz, res: st });
+                    updateUI();
+                }
+            }
+
+            const nextP = (BigInt(issue) + 1n).toString();
+            if (!currentActive || currentActive.period !== nextP) {
+                const seed = parseInt(issue.slice(-3));
+                const hist = list.slice(0, 10).map(x => parseInt(x.number));
+                let trend = (seed % 2 === 0) ? (hist.filter(n => n >= 5).length >= 5 ? "BIG" : "SMALL") : (hist[0] >= 5 ? "SMALL" : "BIG");
+                
+                let n1 = trend === "BIG" ? [5,6,7,8,9][seed % 5] : [0,1,2,3,4][seed % 5];
+                let n2 = trend === "BIG" ? [0,1,2,3,4][(seed*3)%5] : [5,6,7,8,9][(seed*7)%5];
+
+                currentActive = { period: nextP, size: trend, n1: n1, n2: n2 };
+                document.getElementById('res').innerText = trend;
+                document.getElementById('res').style.color = trend === "BIG" ? "var(--d-red)" : "var(--d-blue)";
+                document.getElementById('n1').innerText = n1;
+                document.getElementById('n2').innerText = n2;
+                document.getElementById('nextP').innerText = nextP.slice(-4);
+            }
+            lastProcessed = issue;
+        } catch(e) {}
+    }
+
+    function updateUI() {
+        document.getElementById('c-win').innerText = stats.win;
+        document.getElementById('c-loss').innerText = stats.loss;
+        document.getElementById('c-jack').innerText = stats.jack;
+        const total = stats.win + stats.loss + stats.jack;
+        document.getElementById('c-rate').innerText = total === 0 ? "0%" : Math.round(((stats.win + stats.jack) / total) * 100) + "%";
+
+        let h = "";
+        sessionData.forEach(i => {
+            h += `<tr><td>${i.p}</td><td>${i.num}</td><td style="color:${i.s==='BIG'?'#600':'#004488'}">${i.s}</td><td class="${i.res.toLowerCase()}">${i.res}</td></tr>`;
+        });
+        document.getElementById('session-h').innerHTML = h;
+    }
+</script>
+</body>
+  </html>
